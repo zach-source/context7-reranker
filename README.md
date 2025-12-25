@@ -15,6 +15,8 @@ TF-IDF reranker for Context7 library documentation with pluggable backends. Impr
 
 ## Installation
 
+### Quick Install (pip/pipx)
+
 ```bash
 # Basic installation
 pip install context7-reranker
@@ -28,8 +30,137 @@ pip install context7-reranker[semantic]
 # Everything included
 pip install context7-reranker[all]
 
-# From source with dev dependencies
+# Isolated install with pipx (recommended for CLI usage)
+pipx install context7-reranker[all]
+```
+
+### Ubuntu / Debian
+
+```bash
+# Install Python and pip
+sudo apt update
+sudo apt install python3 python3-pip python3-venv
+
+# Install with pipx (recommended - isolated environment)
+sudo apt install pipx
+pipx ensurepath
+pipx install context7-reranker[all]
+
+# Or install system-wide with pip
+sudo pip3 install context7-reranker[all]
+
+# Verify installation
+context7-reranker --help
+```
+
+### Fedora / RHEL / CentOS
+
+```bash
+# Install Python and pip
+sudo dnf install python3 python3-pip
+
+# Install with pipx (recommended)
+sudo dnf install pipx
+pipx ensurepath
+pipx install context7-reranker[all]
+
+# Or with pip
+pip3 install --user context7-reranker[all]
+```
+
+### Arch Linux
+
+```bash
+# Install Python
+sudo pacman -S python python-pip python-pipx
+
+# Install with pipx (recommended)
+pipx install context7-reranker[all]
+
+# Or with pip
+pip install --user context7-reranker[all]
+```
+
+### Nix (Standalone)
+
+```bash
+# Run directly without installing
+nix run github:zach-source/context7-reranker -- parse "React hooks"
+
+# Install to profile
+nix profile install github:zach-source/context7-reranker
+
+# Use in nix-shell
+nix-shell -p 'import (fetchTarball "https://github.com/zach-source/context7-reranker/archive/main.tar.gz") {}'
+```
+
+### NixOS Module
+
+Add to your NixOS configuration for system-wide installation with systemd service:
+
+```nix
+# flake.nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    context7-reranker.url = "github:zach-source/context7-reranker";
+  };
+
+  outputs = { self, nixpkgs, context7-reranker, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        context7-reranker.nixosModules.default
+        ({ pkgs, ... }: {
+          nixpkgs.overlays = [ context7-reranker.overlays.default ];
+
+          # Enable the service
+          services.context7-reranker = {
+            enable = true;
+
+            # Run as HTTP server (optional)
+            server.enable = true;
+            server.host = "127.0.0.1";
+            server.port = 8000;
+
+            # LLM configuration for query parsing
+            llm = {
+              endpoint = "https://api.openai.com/v1";
+              apiKeyFile = "/run/secrets/openai-api-key";  # Use agenix/sops for secrets
+              model = "gpt-4o-mini";
+            };
+
+            # Optional: External reranker
+            reranker = {
+              endpoint = "http://localhost:8080/v1/rerank";
+              format = "cohere";
+            };
+          };
+        })
+      ];
+    };
+  };
+}
+```
+
+The NixOS module provides:
+- Systemd service with security hardening
+- Automatic user/group creation
+- Credential management for API keys
+- Environment variable configuration
+
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/zach-source/context7-reranker.git
+cd context7-reranker
+
+# Install with dev dependencies
 pip install -e ".[dev]"
+
+# Or use Nix
+nix develop
 ```
 
 ## Usage
@@ -187,13 +318,18 @@ reranker = create_reranker(config)
 Copy the skill to your Claude Code skills directory:
 
 ```bash
-# User-level installation
+# User-level installation (applies to all projects)
 mkdir -p ~/.claude/skills
-cp skills/context7-reranker.md ~/.claude/skills/
+curl -o ~/.claude/skills/context7-reranker.md \
+  https://raw.githubusercontent.com/zach-source/context7-reranker/main/skills/context7-reranker.md
 
 # Or project-level installation
 mkdir -p .claude/skills
-cp skills/context7-reranker.md .claude/skills/
+curl -o .claude/skills/context7-reranker.md \
+  https://raw.githubusercontent.com/zach-source/context7-reranker/main/skills/context7-reranker.md
+
+# Or if you have the repo cloned
+cp skills/context7-reranker.md ~/.claude/skills/
 ```
 
 The skill provides Claude with guidance on parsing library queries and reranking documentation.
@@ -202,7 +338,7 @@ The skill provides Claude with guidance on parsing library queries and reranking
 
 Hooks can automatically enhance Context7 MCP calls. Add to your Claude Code settings:
 
-**~/.claude/settings.json** or **.claude/settings.json**:
+**~/.claude/settings.json** (user-level) or **.claude/settings.json** (project-level):
 
 ```json
 {
@@ -233,44 +369,47 @@ Hooks can automatically enhance Context7 MCP calls. Add to your Claude Code sett
 }
 ```
 
-### NixOS / nix-darwin Installation
+### Systemd User Service (Linux)
 
-Add the flake to your configuration:
+Create a user service to run context7-reranker as a daemon:
 
-```nix
-# flake.nix
-{
-  inputs.context7-reranker.url = "github:zach-source/context7-reranker";
-}
+```bash
+# Create service file
+mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/context7-reranker.service << 'EOF'
+[Unit]
+Description=Context7 Reranker Service
+After=network.target
 
-# configuration.nix
-{ inputs, ... }: {
-  imports = [ inputs.context7-reranker.nixosModules.default ];
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/context7-reranker server --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+Environment=LLM_ENDPOINT=https://api.openai.com/v1
+Environment=LLM_MODEL=gpt-4o-mini
+# Set API key via: systemctl --user set-environment LLM_API_KEY=sk-...
 
-  nixpkgs.overlays = [ inputs.context7-reranker.overlays.default ];
+[Install]
+WantedBy=default.target
+EOF
 
-  services.context7-reranker = {
-    enable = true;
-    server.enable = true;  # Run as HTTP service
-    server.port = 8000;
+# Enable and start
+systemctl --user daemon-reload
+systemctl --user enable --now context7-reranker
 
-    llm = {
-      endpoint = "https://api.openai.com/v1";
-      apiKeyFile = "/run/secrets/openai-api-key";
-      model = "gpt-4o-mini";
-    };
-  };
-}
+# Set API key (persists until logout)
+systemctl --user set-environment LLM_API_KEY=sk-your-key-here
+
+# Check status
+systemctl --user status context7-reranker
 ```
 
-Or just add the package to your environment:
+For persistent environment variables, add to `~/.config/environment.d/context7.conf`:
 
-```nix
-{ inputs, ... }: {
-  environment.systemPackages = [
-    inputs.context7-reranker.packages.${system}.default
-  ];
-}
+```bash
+mkdir -p ~/.config/environment.d
+echo 'LLM_API_KEY=sk-your-key-here' >> ~/.config/environment.d/context7.conf
 ```
 
 ## Development
