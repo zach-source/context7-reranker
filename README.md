@@ -149,6 +149,46 @@ The NixOS module provides:
 - Credential management for API keys
 - Environment variable configuration
 
+### Docker
+
+```bash
+# Build the image
+docker build -t context7-reranker .
+
+# Run with API key
+docker run -d \
+  --name context7-reranker \
+  -p 8000:8000 \
+  -e LLM_API_KEY=sk-your-key-here \
+  context7-reranker
+
+# Or use docker-compose
+echo "LLM_API_KEY=sk-your-key-here" > .env
+docker-compose up -d
+
+# Check logs
+docker logs context7-reranker
+
+# Run CLI commands
+docker run --rm context7-reranker parse "React hooks"
+docker run --rm context7-reranker process --query "auth" --input - < docs.md
+```
+
+**docker-compose.yml** example:
+
+```yaml
+services:
+  context7-reranker:
+    image: context7-reranker:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_MODEL=gpt-4o-mini
+      - RERANKER_FORMAT=cohere
+    restart: unless-stopped
+```
+
 ### From Source
 
 ```bash
@@ -161,6 +201,9 @@ pip install -e ".[dev]"
 
 # Or use Nix
 nix develop
+
+# Or use Docker
+docker build -t context7-reranker .
 ```
 
 ## Usage

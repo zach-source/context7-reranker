@@ -1,0 +1,49 @@
+services:
+  context7-reranker:
+    build: .
+    image: context7-reranker:latest
+    container_name: context7-reranker
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # LLM configuration (required for query parsing)
+      - LLM_ENDPOINT=${LLM_ENDPOINT:-https://api.openai.com/v1}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0}
+      # Reranker configuration (optional - uses TF-IDF by default)
+      - RERANKER_ENDPOINT=${RERANKER_ENDPOINT:-}
+      - RERANKER_API_KEY=${RERANKER_API_KEY:-}
+      - RERANKER_FORMAT=${RERANKER_FORMAT:-cohere}
+      # Tokenizer configuration (optional)
+      - TOKENIZER_ENDPOINT=${TOKENIZER_ENDPOINT:-}
+      - TOKENIZER_API_KEY=${TOKENIZER_API_KEY:-}
+      # Chunker configuration
+      - CHUNKER_MODE=${CHUNKER_MODE:-regex}
+      - CHUNKER_THRESHOLD=${CHUNKER_THRESHOLD:-0.5}
+      # Server configuration
+      - HOST=0.0.0.0
+      - PORT=8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # Optional: Local reranker with llama.cpp
+  # Uncomment to run a local reranker model
+  # reranker:
+  #   image: ghcr.io/ggerganov/llama.cpp:server
+  #   container_name: llama-reranker
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - ./models:/models
+  #   command: >
+  #     -m /models/bge-reranker-base.gguf
+  #     --host 0.0.0.0
+  #     --port 8080
+  #     --reranking
