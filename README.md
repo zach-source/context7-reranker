@@ -180,6 +180,99 @@ reranker = create_reranker(config)
 3. Score each chunk by sum of `tf * idf` for matching query terms
 4. Return top-k chunks sorted by score
 
+## Claude Code Integration
+
+### Install the Skill
+
+Copy the skill to your Claude Code skills directory:
+
+```bash
+# User-level installation
+mkdir -p ~/.claude/skills
+cp skills/context7-reranker.md ~/.claude/skills/
+
+# Or project-level installation
+mkdir -p .claude/skills
+cp skills/context7-reranker.md .claude/skills/
+```
+
+The skill provides Claude with guidance on parsing library queries and reranking documentation.
+
+### Configure Hooks (Optional)
+
+Hooks can automatically enhance Context7 MCP calls. Add to your Claude Code settings:
+
+**~/.claude/settings.json** or **.claude/settings.json**:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__context7__resolve-library-id",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "context7-reranker parse \"$TOOL_INPUT_libraryName\" --format json 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__context7__get-library-docs",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$TOOL_OUTPUT\" | context7-reranker process --query \"$TOOL_INPUT_topic\" --top 5 2>/dev/null || cat"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### NixOS / nix-darwin Installation
+
+Add the flake to your configuration:
+
+```nix
+# flake.nix
+{
+  inputs.context7-reranker.url = "github:zach-source/context7-reranker";
+}
+
+# configuration.nix
+{ inputs, ... }: {
+  imports = [ inputs.context7-reranker.nixosModules.default ];
+
+  nixpkgs.overlays = [ inputs.context7-reranker.overlays.default ];
+
+  services.context7-reranker = {
+    enable = true;
+    server.enable = true;  # Run as HTTP service
+    server.port = 8000;
+
+    llm = {
+      endpoint = "https://api.openai.com/v1";
+      apiKeyFile = "/run/secrets/openai-api-key";
+      model = "gpt-4o-mini";
+    };
+  };
+}
+```
+
+Or just add the package to your environment:
+
+```nix
+{ inputs, ... }: {
+  environment.systemPackages = [
+    inputs.context7-reranker.packages.${system}.default
+  ];
+}
+```
+
 ## Development
 
 ```bash
@@ -194,6 +287,9 @@ black src tests
 
 # Lint
 ruff check src tests
+
+# Nix development shell
+nix develop
 ```
 
 ## License

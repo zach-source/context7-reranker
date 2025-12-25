@@ -1,0 +1,20 @@
+{
+  "name": "context7-reranker",
+  "description": "Automatically parse library queries and enhance Context7 documentation lookups",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__context7__resolve-library-id",
+        "command": "context7-reranker parse \"$TOOL_INPUT_libraryName\" --format json 2>/dev/null || echo '{}'",
+        "description": "Parse query before Context7 library resolution"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__context7__get-library-docs",
+        "command": "echo \"$TOOL_OUTPUT\" | context7-reranker process --query \"$TOOL_INPUT_topic\" --top 5 2>/dev/null || cat",
+        "description": "Rerank Context7 documentation results"
+      }
+    ]
+  }
+}
