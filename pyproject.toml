@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "context7-reranker"
+version = "0.2.0"
+description = "TF-IDF reranker for Context7 library documentation"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Zach Taylor" }
+]
+keywords = ["context7", "reranker", "tfidf", "documentation", "mcp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = []
+
+[project.optional-dependencies]
+tiktoken = ["tiktoken>=0.5.0"]
+http = ["httpx>=0.24.0"]
+semantic = [
+    "sentence-transformers>=2.2.0",
+    "nltk>=3.8.0",
+    "scikit-learn>=1.0.0",
+]
+all = [
+    "tiktoken>=0.5.0",
+    "httpx>=0.24.0",
+    "sentence-transformers>=2.2.0",
+    "nltk>=3.8.0",
+    "scikit-learn>=1.0.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21.0",
+    "respx>=0.20.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+    "httpx>=0.24.0",
+]
+
+[project.scripts]
+context7-reranker = "context7_reranker.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ztaylor/context7-reranker"
+Repository = "https://github.com/ztaylor/context7-reranker"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/context7_reranker"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
