@@ -1,3 +1,7 @@
+# Nix
+result
+.direnv/
+
 # devenv
 .devenv/
 .devenv.flake.nix
