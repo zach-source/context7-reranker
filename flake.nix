@@ -18,7 +18,7 @@
         # Python package definition
         context7-reranker = pkgs.python312Packages.buildPythonPackage {
           pname = "context7-reranker";
-          version = "0.2.0";
+          version = "0.3.0";
           format = "pyproject";
 
           src = ./.;

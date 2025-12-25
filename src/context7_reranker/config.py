@@ -79,12 +79,39 @@ class ChunkerConfig:
 
 
 @dataclass
+class LLMConfig:
+    """Configuration for LLM query parser."""
+
+    endpoint: str | None = None
+    model: str = "gpt-4o-mini"
+    api_key: str | None = None
+    timeout: float = 30.0
+    max_retries: int = 3
+    temperature: float = 0.0  # Low temp for structured output
+    max_tokens: int = 500
+
+    @classmethod
+    def from_env(cls) -> LLMConfig:
+        """Create config from environment variables."""
+        return cls(
+            endpoint=os.environ.get("LLM_ENDPOINT", "https://api.openai.com/v1"),
+            model=os.environ.get("LLM_MODEL", "gpt-4o-mini"),
+            api_key=os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY"),
+            timeout=float(os.environ.get("LLM_TIMEOUT", "30")),
+            max_retries=int(os.environ.get("LLM_MAX_RETRIES", "3")),
+            temperature=float(os.environ.get("LLM_TEMPERATURE", "0")),
+            max_tokens=int(os.environ.get("LLM_MAX_TOKENS", "500")),
+        )
+
+
+@dataclass
 class Config:
     """Combined configuration for all backends."""
 
     tokenizer: TokenizerConfig = field(default_factory=TokenizerConfig)
     reranker: RerankerConfig = field(default_factory=RerankerConfig)
     chunker: ChunkerConfig = field(default_factory=ChunkerConfig)
+    llm: LLMConfig = field(default_factory=LLMConfig)
 
     @classmethod
     def from_env(cls) -> Config:
@@ -93,4 +120,5 @@ class Config:
             tokenizer=TokenizerConfig.from_env(),
             reranker=RerankerConfig.from_env(),
             chunker=ChunkerConfig.from_env(),
+            llm=LLMConfig.from_env(),
         )

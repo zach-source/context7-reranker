@@ -117,6 +117,46 @@ in {
       };
     };
 
+    # LLM configuration for query parsing
+    llm = {
+      endpoint = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "OpenAI-compatible chat API endpoint.";
+        example = "https://api.openai.com/v1";
+      };
+
+      apiKey = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "API key for LLM service.";
+      };
+
+      apiKeyFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = "File containing the API key for LLM service.";
+      };
+
+      model = lib.mkOption {
+        type = lib.types.str;
+        default = "gpt-4o-mini";
+        description = "Model name for query parsing.";
+      };
+
+      temperature = lib.mkOption {
+        type = lib.types.float;
+        default = 0.0;
+        description = "Temperature for LLM responses (0-2).";
+      };
+
+      timeout = lib.mkOption {
+        type = lib.types.float;
+        default = 30.0;
+        description = "Request timeout in seconds.";
+      };
+    };
+
     # Server configuration (for future HTTP server mode)
     server = {
       enable = lib.mkEnableOption "Run as HTTP server";
@@ -190,6 +230,12 @@ in {
           CHUNKER_MODEL = cfg.chunker.model;
           CHUNKER_ENDPOINT = lib.mkIf (cfg.chunker.endpoint != null) cfg.chunker.endpoint;
 
+          # LLM config
+          LLM_ENDPOINT = lib.mkIf (cfg.llm.endpoint != null) cfg.llm.endpoint;
+          LLM_MODEL = cfg.llm.model;
+          LLM_TEMPERATURE = toString cfg.llm.temperature;
+          LLM_TIMEOUT = toString cfg.llm.timeout;
+
           # Server config
           HOST = cfg.server.host;
           PORT = toString cfg.server.port;
@@ -222,7 +268,8 @@ in {
         # Load API keys from files if specified
         LoadCredential =
           lib.optional (cfg.tokenizer.apiKeyFile != null) "tokenizer-api-key:${cfg.tokenizer.apiKeyFile}"
-          ++ lib.optional (cfg.reranker.apiKeyFile != null) "reranker-api-key:${cfg.reranker.apiKeyFile}";
+          ++ lib.optional (cfg.reranker.apiKeyFile != null) "reranker-api-key:${cfg.reranker.apiKeyFile}"
+          ++ lib.optional (cfg.llm.apiKeyFile != null) "llm-api-key:${cfg.llm.apiKeyFile}";
       };
 
       # Set API keys from credential files
@@ -232,6 +279,9 @@ in {
         ''}
         ${lib.optionalString (cfg.reranker.apiKeyFile != null) ''
           export RERANKER_API_KEY="$(cat $CREDENTIALS_DIRECTORY/reranker-api-key)"
+        ''}
+        ${lib.optionalString (cfg.llm.apiKeyFile != null) ''
+          export LLM_API_KEY="$(cat $CREDENTIALS_DIRECTORY/llm-api-key)"
         ''}
       '';
     };

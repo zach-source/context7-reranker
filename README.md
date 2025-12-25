@@ -4,6 +4,7 @@ TF-IDF reranker for Context7 library documentation with pluggable backends. Impr
 
 ## Features
 
+- **LLM Query Parsing**: Extract library names and topics from natural language using OpenAI-compatible APIs
 - **Hierarchical chunking**: Splits documentation by headers → paragraphs → sentences
 - **Semantic chunking**: Optional similarity-based splitting with sentence-transformers
 - **TF-IDF reranking**: Scores chunks by relevance to user query
@@ -36,6 +37,14 @@ pip install -e ".[dev]"
 ### CLI
 
 ```bash
+# Parse a query to extract library and topic (uses LLM if configured)
+context7-reranker parse "How do I use React hooks?"
+
+# Output in different formats
+context7-reranker parse "FastAPI authentication" --format json
+context7-reranker parse "pandas dataframe filtering" --format context7
+context7-reranker parse "Next.js routing" --format text
+
 # Process documentation and rerank
 context7-reranker process --query "authentication middleware" --input docs.md
 
@@ -53,7 +62,17 @@ context7-reranker process \
 ### Python API
 
 ```python
-from context7_reranker import split_into_chunks, rerank_chunks
+from context7_reranker import parse_query, split_into_chunks, rerank_chunks
+
+# Parse a natural language query to extract library and topic
+parsed = parse_query("How do I use React hooks for state management?")
+print(f"Library: {parsed.library_name}")  # "react"
+print(f"Topic: {parsed.topic}")           # "hooks for state management"
+print(f"Confidence: {parsed.confidence}") # 0.9
+
+# Get Context7 MCP parameters
+params = parsed.to_context7_params()
+# {"libraryName": "react", "topic": "hooks for state management"}
 
 # Split documentation into chunks
 content = open("docs.md").read()
@@ -66,6 +85,27 @@ ranked = rerank_chunks(chunks, query, top_k=5)
 for chunk in ranked:
     print(f"Score: {chunk.score:.3f}")
     print(chunk.content[:100])
+```
+
+### Query Parser with LLM
+
+```python
+from context7_reranker import LLMQueryParser, LLMConfig
+
+# Configure LLM for better query parsing
+config = LLMConfig(
+    endpoint="https://api.openai.com/v1",
+    api_key="sk-...",
+    model="gpt-4o-mini",
+    temperature=0.0,
+)
+
+parser = LLMQueryParser(config)
+result = parser.parse("tensorflow vs pytorch for image classification")
+
+print(result.library_name)           # "tensorflow"
+print(result.topic)                  # "image classification"
+print(result.alternative_libraries)  # ["pytorch"]
 ```
 
 ### Pluggable Backends
@@ -106,6 +146,10 @@ reranker = create_reranker(config)
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `LLM_ENDPOINT` | OpenAI-compatible chat API endpoint | `https://api.openai.com/v1` |
+| `LLM_API_KEY` | API key for LLM (also reads `OPENAI_API_KEY`) | None |
+| `LLM_MODEL` | Model name for query parsing | `gpt-4o-mini` |
+| `LLM_TEMPERATURE` | Temperature for LLM responses | `0` |
 | `TOKENIZER_ENDPOINT` | HTTP tokenizer endpoint | None (local) |
 | `TOKENIZER_API_KEY` | API key for tokenizer | None |
 | `RERANKER_ENDPOINT` | HTTP reranker endpoint | None (TF-IDF) |

@@ -7,6 +7,7 @@ import sys
 from context7_reranker.chunker import split_into_chunks
 from context7_reranker.factory import configure_from_env
 from context7_reranker.formatter import format_output
+from context7_reranker.query_parser import parse_query
 from context7_reranker.reranker import rerank_chunks
 
 
@@ -105,6 +106,19 @@ def main():
         help="Max tokens per chunk (default 1000)",
     )
 
+    # Parse command (LLM-based query parsing)
+    parse_parser = subparsers.add_parser(
+        "parse", help="Parse a query to extract library and topic using LLM"
+    )
+    parse_parser.add_argument("query", help="Natural language query about a library")
+    parse_parser.add_argument(
+        "--format",
+        "-f",
+        choices=["json", "context7", "text"],
+        default="json",
+        help="Output format (default: json)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "resolve":
@@ -134,6 +148,44 @@ def main():
 
         # Output
         print(format_output(ranked, query))
+
+    elif args.command == "parse":
+        # Parse query using LLM
+        parsed = parse_query(args.query)
+
+        if args.format == "json":
+            # Full JSON output
+            output = {
+                "library_name": parsed.library_name,
+                "topic": parsed.topic,
+                "version": parsed.version,
+                "confidence": parsed.confidence,
+                "alternative_libraries": parsed.alternative_libraries,
+                "raw_query": parsed.raw_query,
+            }
+            print(json.dumps(output, indent=2))
+
+        elif args.format == "context7":
+            # Output formatted for Context7 MCP calls
+            output = {
+                "resolve": build_resolve_request(parsed.library_name),
+                "parsed": {
+                    "library_name": parsed.library_name,
+                    "topic": parsed.topic,
+                    "confidence": parsed.confidence,
+                },
+            }
+            print(json.dumps(output, indent=2))
+
+        else:  # text format
+            print(f"Library: {parsed.library_name}")
+            if parsed.topic:
+                print(f"Topic: {parsed.topic}")
+            if parsed.version:
+                print(f"Version: {parsed.version}")
+            print(f"Confidence: {parsed.confidence:.2f}")
+            if parsed.alternative_libraries:
+                print(f"Alternatives: {', '.join(parsed.alternative_libraries)}")
 
     else:
         parser.print_help()

@@ -3,8 +3,19 @@
 from __future__ import annotations
 
 from context7_reranker.chunker import RegexChunker, set_default_chunker
-from context7_reranker.config import ChunkerConfig, RerankerConfig, TokenizerConfig
+from context7_reranker.config import (
+    ChunkerConfig,
+    LLMConfig,
+    RerankerConfig,
+    TokenizerConfig,
+)
 from context7_reranker.protocols import BaseChunker, BaseReranker, BaseTokenizer
+from context7_reranker.query_parser import (
+    BaseQueryParser,
+    LLMQueryParser,
+    SimpleQueryParser,
+    set_default_parser,
+)
 from context7_reranker.reranker import TfidfReranker, set_default_reranker
 from context7_reranker.tokenizer import LocalTokenizer, set_default_tokenizer
 
@@ -83,6 +94,23 @@ def create_chunker(config: ChunkerConfig | None = None) -> BaseChunker:
     return RegexChunker()
 
 
+def create_query_parser(config: LLMConfig | None = None) -> BaseQueryParser:
+    """Create a query parser based on configuration.
+
+    Args:
+        config: LLM configuration (uses env vars if None).
+
+    Returns:
+        Configured query parser instance.
+    """
+    config = config or LLMConfig.from_env()
+
+    if config.endpoint and config.api_key:
+        return LLMQueryParser(config)
+
+    return SimpleQueryParser()
+
+
 def configure_from_env() -> None:
     """Configure all default backends from environment variables.
 
@@ -90,6 +118,7 @@ def configure_from_env() -> None:
     - Tokenizer (TOKENIZER_ENDPOINT, TOKENIZER_API_KEY, etc.)
     - Reranker (RERANKER_ENDPOINT, RERANKER_API_KEY, etc.)
     - Chunker (CHUNKER_MODE, CHUNKER_ENDPOINT, etc.)
+    - Query Parser (LLM_ENDPOINT, LLM_API_KEY, LLM_MODEL, etc.)
 
     Call this at application startup to enable external services.
     """
@@ -108,6 +137,11 @@ def configure_from_env() -> None:
     chunker = create_chunker(chunker_config)
     set_default_chunker(chunker)
 
+    # Configure query parser
+    llm_config = LLMConfig.from_env()
+    parser = create_query_parser(llm_config)
+    set_default_parser(parser)
+
 
 def reset_defaults() -> None:
     """Reset all defaults to local implementations.
@@ -117,3 +151,4 @@ def reset_defaults() -> None:
     set_default_tokenizer(LocalTokenizer())
     set_default_reranker(TfidfReranker())
     set_default_chunker(RegexChunker())
+    set_default_parser(SimpleQueryParser())

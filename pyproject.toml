@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "context7-reranker"
-version = "0.2.0"
-description = "TF-IDF reranker for Context7 library documentation"
+version = "0.3.0"
+description = "TF-IDF reranker for Context7 library documentation with LLM query parsing"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -53,8 +53,8 @@ dev = [
 context7-reranker = "context7_reranker.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/ztaylor/context7-reranker"
-Repository = "https://github.com/ztaylor/context7-reranker"
+Homepage = "https://github.com/zach-source/context7-reranker"
+Repository = "https://github.com/zach-source/context7-reranker"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/context7_reranker"]
